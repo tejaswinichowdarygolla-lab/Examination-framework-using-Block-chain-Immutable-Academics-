@@ -1,0 +1,15 @@
+/* animations.css — Only functional animations. No decorative effects. */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-spin    { animation: spin 1s linear infinite; }
+.animate-in      { animation: fadeIn 180ms ease forwards; }
+.duration-300    { animation-duration: 300ms; }
+.fade-in         { animation-name: fadeIn; }

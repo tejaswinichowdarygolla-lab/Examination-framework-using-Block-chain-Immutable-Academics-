@@ -1,0 +1,99 @@
+/* globals.css — Minimum overrides for shadcn/ui component appearance */
+
+/* Shadcn Button overrides */
+[data-slot="button"] {
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  transition: background 150ms ease, border-color 150ms ease !important;
+  box-shadow: none !important;
+}
+
+/* Primary variant */
+[data-variant="default"],
+.btn[class*="bg-primary"] {
+  background-color: #2563EB !important;
+  color: #FFFFFF !important;
+  border: none !important;
+}
+
+/* Input overrides */
+input, textarea, select {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  border-radius: 6px;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.10) !important;
+  outline: none !important;
+}
+
+/* Table */
+table { border-collapse: collapse; width: 100%; }
+thead tr { background: #F7F8FA; }
+thead th {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #E4E7EC;
+}
+tbody tr { background: #FFFFFF; border-bottom: 1px solid #E4E7EC; }
+tbody tr:hover { background: #F7F8FA; }
+tbody td { padding: 12px 16px; font-size: 14px; color: #111827; }
+
+/* Dropdown/Select */
+[data-radix-popper-content-wrapper] {
+  border-radius: 8px !important;
+}
+[role="listbox"], [role="menu"] {
+  background: #FFFFFF !important;
+  border: 1px solid #E4E7EC !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+  padding: 4px !important;
+}
+
+/* Toast override */
+[data-sonner-toast] {
+  background: #FFFFFF !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.10) !important;
+  border: 1px solid #E4E7EC !important;
+}
+
+/* Strip all glow animations globally */
+* {
+  text-shadow: none !important;
+}
+
+/* Override any dark backgrounds from old theme */
+.bg-background { background-color: #F7F8FA !important; }
+.bg-card       { background-color: #FFFFFF !important; }
+.border-border  { border-color: #E4E7EC !important; }
+.text-foreground{ color: #111827 !important; }
+.text-muted-foreground { color: #6B7280 !important; }
+
+/* Sidebar */
+[data-sidebar="sidebar"],
+aside[aria-label*="sidebar"],
+nav[aria-label*="sidebar"] {
+  background: #FFFFFF !important;
+  border-right: 1px solid #E4E7EC !important;
+}
+
+/* Progress bar */
+[role="progressbar"] > * {
+  background: #2563EB !important;
+}
+
+/* Scrollbar (light) */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F7F8FA; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
