@@ -1,0 +1,153 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "./RoleManager.sol";
+import "./AuditLog.sol";
+import "./IExamManager.sol";
+
+// Interface for cross-contract checks (Deduction & Ownership)
+interface IFeeVault {
+    function totalCharged(address teacher) external view returns (uint256);
+}
+
+/**
+ * ResultLedger.sol — Immutable Academic Registry
+ */
+contract ResultLedger {
+
+    RoleManager public roleManager;
+    AuditLog    public auditLog;
+    address     public examManager;
+    address     public feeVault;
+    
+    bool        private _locked;
+
+    modifier noReentrant() {
+        require(!_locked, "ResultLedger: reentrant call");
+        _locked = true;
+        _;
+        _locked = false;
+    }
+
+    struct ResultEntry {
+        bytes32 resultHash;      // SHA-256 integrity hash
+        string  ipfsCID;         // Encrypted result pointer
+        uint256 timestamp;
+        address submittedBy;
+        bool    isUpdate;
+        uint256 score;
+        uint256 totalQuestions;
+    }
+
+    mapping(address => mapping(uint256 => ResultEntry[])) private _results;
+    mapping(address => mapping(uint256 => bool)) public hasSubmitted;
+    
+    // Internal registry for exam-to-teacher mapping (Self-contained verification)
+    mapping(uint256 => address) public examTeachers;
+
+    event ResultSubmitted(
+        address indexed student,
+        uint256 indexed examId,
+        bytes32 resultHash,
+        string  ipfsCID,
+        uint256 score,
+        uint256 totalQuestions,
+        bool    isUpdate,
+        address submittedBy
+    );
+
+    constructor(address _roleManager, address _auditLog, address _examManager, address _feeVault) {
+        roleManager = RoleManager(_roleManager);
+        auditLog    = AuditLog(_auditLog);
+        examManager = _examManager;
+        feeVault    = _feeVault;
+    }
+
+    function submitResult(
+        address student,
+        uint256 examId,
+        bytes32 resultHash,
+        string  calldata ipfsCID,
+        uint256 score,
+        uint256 totalQuestions
+    ) external noReentrant {
+        bool isTeacher = roleManager.isTeacher(msg.sender);
+        bool isStudent = roleManager.isStudent(msg.sender);
+        require(isTeacher || isStudent || roleManager.isAdmin(msg.sender), "ResultLedger: unauthorized sender");
+
+        // 1. If student submits: must be first time
+        if (isStudent && !isTeacher) {
+            require(msg.sender == student, "ResultLedger: not student wallet");
+            require(!hasSubmitted[student][examId], "ResultLedger: already submitted");
+            hasSubmitted[student][examId] = true;
+        }
+
+        // 2. Teacher Verification & Locking
+        bool isUpdate = _results[student][examId].length > 0;
+        
+        // Lock teacher of this exam upon first submission/update
+        if (examTeachers[examId] == address(0) && isTeacher) {
+             examTeachers[examId] = msg.sender;
+        }
+        
+        if (isTeacher) {
+             // Verify this teacher owns this specific exam record
+             // Fallback to ExamManager only if internal registry is empty
+             if (examTeachers[examId] != address(0)) {
+                 require(msg.sender == examTeachers[examId], "ResultLedger: not registered teacher");
+             } else {
+                 try IExamManager(examManager).getExam(examId) returns (string memory, string memory, address teacherAddr, string memory, uint256, uint256, bool) {
+                     if (teacherAddr != address(0)) {
+                         require(msg.sender == teacherAddr, "ResultLedger: not exam teacher");
+                         examTeachers[examId] = teacherAddr;
+                     }
+                 } catch {
+                     // If ExamManager fails (hashed ID used), we rely on role only for first call
+                     examTeachers[examId] = msg.sender;
+                 }
+             }
+        }
+
+        _results[student][examId].push(ResultEntry({
+            resultHash:     resultHash,
+            ipfsCID:        ipfsCID,
+            timestamp:      block.timestamp,
+            submittedBy:    msg.sender,
+            isUpdate:       isUpdate,
+            score:          score,
+            totalQuestions: totalQuestions
+        }));
+
+        auditLog.logEvent(
+            isUpdate ? "ResultUpdated" : "ResultSubmitted",
+            student,
+            string(abi.encodePacked("Exam ", _uint2str(examId)))
+        );
+
+        emit ResultSubmitted(student, examId, resultHash, ipfsCID, score, totalQuestions, isUpdate, msg.sender);
+    }
+
+    function getResultHistory(address student, uint256 examId) external view returns (ResultEntry[] memory) {
+        return _results[student][examId];
+    }
+
+    function getLatestResult(address student, uint256 examId) external view returns (ResultEntry memory) {
+        ResultEntry[] storage entries = _results[student][examId];
+        require(entries.length > 0, "ResultLedger: zero results");
+        return entries[entries.length - 1];
+    }
+
+    function _uint2str(uint256 n) internal pure returns (string memory) {
+        if (n == 0) return "0";
+        uint256 j = n; uint256 len;
+        while (j != 0) { len++; j /= 10; }
+        bytes memory bstr = new bytes(len);
+        uint256 k = len;
+        while (n != 0) {
+            k--;
+            bstr[k] = bytes1(uint8(48 + (n % 10)));
+            n /= 10;
+        }
+        return string(bstr);
+    }
+}
